@@ -27,7 +27,7 @@ Raw data are not tracked. `slurm/02_download.sh` retrieves them from GEO and rec
 
 | Step | Methods |
 |---|---|
-| QC | Per-sample filtering (genes/cell, UMIs, % mitochondrial), doublets with `scDblFinder` |
+| QC | Per-sample MAD-based outlier flags (UMIs, genes, % mitochondrial), doublets with `scDblFinder` run per sample |
 | Normalisation & integration | `SCTransform`, PCA, `Harmony` across **patients** |
 | Integration assessment | Unintegrated vs integrated embeddings, LISI (patient mixing vs cell-type separation) |
 | Clustering & annotation | Graph-based clustering (`igraph` Leiden), UMAP, canonical markers + `SingleR` |
@@ -43,6 +43,8 @@ Raw data are not tracked. `slurm/02_download.sh` retrieves them from GEO and rec
 
 ### Design decisions
 
+- **QC is a re-assessment.** The GEO matrix was already filtered by the authors (71,915 cells), so cells are flagged with per-sample robust thresholds (3 MADs) rather than new global cut-offs.
+- **No fixed mitochondrial cut-off.** Hepatocytes and many HCC tumour cells are mitochondria-rich; a 10–20% threshold would remove them preferentially. Only a per-sample upper MAD threshold and a lenient 50% cap are applied.
 - **Integrate across patients, not tissue sites.** Tissue site is the biological signal of interest; correcting it would remove it.
 - **Differential expression at the pseudobulk level** with the patient as blocking factor, so that tumour vs non-tumour comparisons are made within patients and cells are not treated as independent replicates.
 - **Stem-like states are treated cautiously.** Cancer stem cells in HCC are a debated concept and four-marker scores are weak evidence on their own; they are only interpreted within CNV-confirmed malignant cells and alongside an independent potency estimate.
@@ -64,6 +66,7 @@ sbatch slurm/00_check_env.sh      # cluster diagnostics (modules, network, quota
 sbatch slurm/01_test_conda.sh     # dry-run: can the environment be solved on this system?
 sbatch slurm/02_download.sh       # GEO download + checksums
 sbatch slurm/03_install_env.sh    # create env/, install GitHub packages, export lock files
+sbatch slurm/10_run_pipeline.sh   # run or resume the targets pipeline
 ```
 
 Each script writes a plain-text report (`*_report.txt`) so that runs can be inspected without an interactive session.
@@ -74,8 +77,8 @@ Each script writes a plain-text report (`*_report.txt`) so that runs can be insp
 hcc-singlecell/
 ├── README.md
 ├── environment.yml       # conda specification
-├── _targets.R            # pipeline definition (upcoming)
-├── R/                    # functions used by the pipeline
+├── _targets.R            # pipeline definition
+├── R/                    # functions used by the pipeline (ingest, QC, ...)
 ├── slurm/                # setup and launch scripts
 ├── results/
 │   ├── figures/
