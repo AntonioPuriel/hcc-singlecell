@@ -1,0 +1,30 @@
+# Data and large intermediates (never tracked)
+data/
+_targets/
+env/
+mamba/
+conda_pkgs/
+tools/
+tmp/
+sing_cache/
+containers/
+
+# SLURM logs and diagnostic reports
+logs/*
+!logs/.gitkeep
+*_report.txt
+envtest_dryrun_full.txt
+modules_full.txt
+slurm-*.out
+
+# R / Quarto
+.Rhistory
+.RData
+.Rproj.user/
+report/*_files/
+report/*.html
+/.quarto/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,42 @@
+name: hcc-sc
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  # base y compilación (para paquetes de GitHub)
+  - r-base=4.5
+  - compilers
+  - make
+  - cmake
+  - pkg-config
+  - r-biocmanager
+  - r-remotes
+  # single-cell
+  - r-seurat
+  - r-seuratobject
+  - r-harmony
+  - r-igraph
+  - r-matrix
+  - bioconductor-scdblfinder
+  - bioconductor-singler
+  - bioconductor-celldex
+  - bioconductor-infercnv
+  # DE, pathways, trayectorias
+  - bioconductor-deseq2
+  - bioconductor-fgsea
+  - r-msigdbr
+  - bioconductor-slingshot
+  - r-monocle3
+  # utilidades
+  - r-data.table
+  - r-dplyr
+  - r-tidyr
+  - r-ggplot2
+  - r-patchwork
+  # pipeline e informe
+  - r-targets
+  - r-tarchetypes
+  - r-crew
+  - r-qs2
+  - r-rmarkdown
+  - r-quarto
