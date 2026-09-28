@@ -2,8 +2,8 @@
 #SBATCH --job-name=hcc_pipeline
 #SBATCH --partition=standard
 #SBATCH --time=5-00:00:00
-#SBATCH --cpus-per-task=8
-#SBATCH --mem=80G
+#SBATCH --cpus-per-task=24
+#SBATCH --mem=46G
 #SBATCH --output=logs/pipeline_%j.out
 #SBATCH --error=logs/pipeline_%j.err
 
@@ -11,6 +11,8 @@
 # so the same command is used after a crash or after changing code.
 # Launch from the project root:  sbatch slurm/10_run_pipeline.sh
 # Report: pipeline_report.txt (progress, errors, storage)
+# Memory: standard enforces MaxMemPerCPU=2000 MB, so memory is obtained through
+# CPUs (24 x 2000 MB = 48 GB). Parallel workers are capped separately in _targets.R.
 
 set +e
 PROJ=/work/aphernand001/hcc-singlecell

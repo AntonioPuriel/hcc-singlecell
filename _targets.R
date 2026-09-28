@@ -14,7 +14,9 @@ cfg <- list(
   seed          = 1234,
   qc_nmads      = 3,
   qc_max_mt     = 50,
-  workers       = as.integer(Sys.getenv("SLURM_CPUS_PER_TASK", "2"))
+  # Parallel workers for scDblFinder. Capped: on this cluster CPUs are requested
+  # mainly to obtain memory (MaxMemPerCPU = 2 GB), and each worker copies data.
+  workers       = min(6L, as.integer(Sys.getenv("SLURM_CPUS_PER_TASK", "2")))
 )
 
 tar_option_set(
