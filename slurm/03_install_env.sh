@@ -61,14 +61,16 @@ section "3. PAQUETES DE GITHUB / R-UNIVERSE (no bloqueantes)"
 options(Ncpus = 8, timeout = 600)
 repos <- BiocManager::repositories()
 lib <- .Library
+# install.packages() only warns on failure, so success is checked by loading the package
 try_install <- function(label, expr) {
-  res <- tryCatch({ expr; "OK" }, error = function(e) paste("FAIL:", conditionMessage(e)))
-  cat(sprintf("%-10s %s\n", label, res))
+  tryCatch(expr, error = function(e) message("error: ", conditionMessage(e)))
+  cat(sprintf("%-10s %s\n", label, if (requireNamespace(label, quietly = TRUE)) "OK" else "FAIL"))
 }
 if (!requireNamespace("leidenbase", quietly = TRUE))
   try_install("leidenbase", install.packages("leidenbase", lib = lib, repos = repos))
-try_install("msigdbdf", install.packages("msigdbdf", lib = lib,
-            repos = c("https://igordot.r-universe.dev", repos)))
+try_install("NMF", install.packages("NMF", lib = lib, repos = repos, type = "source"))  # CellChat needs >= 0.23
+try_install("msigdbdf", remotes::install_github("igordot/msigdbdf", lib = lib, repos = repos,
+            upgrade = "never", build_vignettes = FALSE))
 gh <- c(presto = "immunogenomics/presto",
         CellChat = "jinworks/CellChat",
         liana = "saezlab/liana")
