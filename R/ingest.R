@@ -56,7 +56,7 @@ read_metadata <- function(path, cols) {
   if (length(missing))
     stop("Metadata columns not found: ", paste(missing, collapse = ", "),
          "\nAvailable columns: ", paste(colnames(md), collapse = ", "),
-         "\nEdit `cfg$meta_cols` in _targets.R.")
+         "\nEdit the `meta_cols` target in _targets.R.")
   md
 }
 

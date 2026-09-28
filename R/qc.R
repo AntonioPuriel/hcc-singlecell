@@ -43,7 +43,14 @@ flag_qc_outliers <- function(seu, nmads = 3, max_mt = 50) {
 
 #' Doublet detection with scDblFinder, run per sample (doublets form within a
 #' capture, never across samples). Returns a data frame keyed by cell.
-run_doublets <- function(seu, seed = 1234, workers = 1L) {
+#' Workers are read from the SLURM allocation at run time (not tracked by targets)
+#' and capped: CPUs are requested mainly to obtain memory (MaxMemPerCPU = 2 GB)
+#' and each worker holds its own copy of a sample.
+n_workers <- function(max_workers = 6L) {
+  min(max_workers, as.integer(Sys.getenv("SLURM_CPUS_PER_TASK", "1")))
+}
+
+run_doublets <- function(seu, seed = 1234, workers = n_workers()) {
   set.seed(seed)
   sce <- SingleCellExperiment::SingleCellExperiment(
     assays = list(counts = SeuratObject::LayerData(seu, assay = "RNA", layer = "counts"))
