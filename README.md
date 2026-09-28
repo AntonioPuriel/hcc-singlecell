@@ -27,7 +27,7 @@ Raw data are not tracked. `slurm/02_download.sh` retrieves them from GEO and rec
 
 | Step | Methods |
 |---|---|
-| QC | Per-sample MAD-based outlier flags (UMIs, genes, % mitochondrial), doublets with `scDblFinder` run per sample |
+| QC | Lower-tail per-sample MAD outliers (UMIs, genes), absolute % mitochondrial cap, doublets with `scDblFinder` run per sample |
 | Normalisation & integration | Log-normalisation, 3,000 HVGs (MT/ribosomal excluded), PCA, `Harmony` across **patients** |
 | Integration assessment | Unintegrated vs integrated embeddings; kNN-based LISI for patient (mixing), tissue site and author cell type (should stay separated) |
 | Clustering & annotation | Leiden clustering at several resolutions, UMAP, canonical markers, `presto` cluster markers, `SingleR` (HPCA) and comparison with the authors' labels |
@@ -43,8 +43,8 @@ Raw data are not tracked. `slurm/02_download.sh` retrieves them from GEO and rec
 
 ### Design decisions
 
-- **QC is a re-assessment.** The GEO matrix was already filtered by the authors (71,915 cells), so cells are flagged with per-sample robust thresholds (3 MADs) rather than new global cut-offs.
-- **No fixed mitochondrial cut-off.** Hepatocytes and many HCC tumour cells are mitochondria-rich; a 10–20% threshold would remove them preferentially. Only a per-sample upper MAD threshold and a lenient 50% cap are applied.
+- **Study design limits the comparisons.** Tumour and non-tumour tissue are paired in 8 of 10 patients, so tumour vs non-tumour tests are done within patients. Portal vein tumour thrombus (2 patients) and lymph-node metastasis (1 patient) are described, not tested.
+- **QC is a re-assessment, and composition-aware.** The GEO matrix was already filtered by the authors (71,915 cells). A first pass with per-sample MAD thresholds on both tails removed 15% of cells, and not at random: upper-tail UMI outliers were 8.8% of non-tumour cells vs 0.8% of tumour cells. Liver samples mix small immune cells with large, mitochondria-rich hepatocytes, so the upper tail is a cell type rather than an artefact. Final rules: lower-tail MAD outliers (UMIs, genes) per sample, a single absolute mitochondrial cap (30%), and doublets removed with scDblFinder instead of an upper UMI cut-off. The rejected rules are still computed and tabulated by cell type (`results/tables/02_qc_flags_by_celltype.tsv`).
 - **Log-normalisation rather than SCTransform.** Differential expression is done on raw counts at the pseudobulk level, so SCTransform would only affect the embedding, at a memory cost that matters on a cluster limited to 2 GB per CPU.
 - **Integrate across patients, not tissue sites.** Tissue site is the biological signal of interest; correcting it would remove it.
 - **Differential expression at the pseudobulk level** with the patient as blocking factor, so that tumour vs non-tumour comparisons are made within patients and cells are not treated as independent replicates.
@@ -100,7 +100,7 @@ hcc-singlecell/
 - [x] Cluster diagnostics and environment feasibility (conda solve on glibc 2.17)
 - [x] Data download with checksums
 - [x] Environment installation and lock files
-- [ ] QC *(code ready, running)*
+- [ ] QC *(first pass done; rules revised, see Design decisions)*
 - [ ] Integration and annotation *(code ready)*
 - [ ] Stem-like and myeloid states
 - [ ] Differential expression and pathways

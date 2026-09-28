@@ -23,7 +23,7 @@ list(
   # ---- Parameters -------------------------------------------------------------
   # Column names in the GEO metadata (checked by read_metadata())
   tar_target(meta_cols, list(cell = "Cell", sample = "sample", patient = "patient", site = "site")),
-  tar_target(qc_params, list(nmads = 3, max_mt = 50)),
+  tar_target(qc_params, list(nmads = 3, max_mt = 30)),
   tar_target(author_label, "celltype"),   # author annotation column, used only for comparison
 
   # ---- 1. Ingestion --------------------------------------------------------
@@ -48,6 +48,10 @@ list(
   tar_target(seu_qc, apply_qc(seu_flagged)),
   tar_target(qc_tsv,
              write_tsv(qc_summary(seu_flagged), "results/tables/02_qc_summary.tsv"),
+             format = "file"),
+  tar_target(qc_celltype_tsv,
+             write_tsv(qc_flags_by_celltype(seu_flagged, author_label),
+                       "results/tables/02_qc_flags_by_celltype.tsv"),
              format = "file"),
   tar_target(qc_png,
              save_plot(plot_qc(seu_flagged), "results/figures/02_qc_per_sample.png",
