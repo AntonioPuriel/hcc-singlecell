@@ -27,7 +27,9 @@ section() { echo; echo "=================== $1 ==================="; date; }
 export MAMBA_ROOT_PREFIX="$PROJ/mamba"
 export TMPDIR="$PROJ/tmp"
 export OMP_NUM_THREADS=1            # avoid BLAS oversubscription with parallel workers
-mkdir -p "$TMPDIR" logs
+export EXPERIMENT_HUB_CACHE="$PROJ/cache/experimenthub"   # SingleR/celldex references
+export ANNOTATION_HUB_CACHE="$PROJ/cache/annotationhub"
+mkdir -p "$TMPDIR" logs "$PROJ/cache"
 MM="$PROJ/tools/bin/micromamba"
 
 section "0. STORAGE CHECK (limit ${MAX_GB} GB)"

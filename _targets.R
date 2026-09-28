@@ -24,6 +24,7 @@ list(
   # Column names in the GEO metadata (checked by read_metadata())
   tar_target(meta_cols, list(cell = "Cell", sample = "sample", patient = "patient", site = "site")),
   tar_target(qc_params, list(nmads = 3, max_mt = 50)),
+  tar_target(author_label, "celltype"),   # author annotation column, used only for comparison
 
   # ---- 1. Ingestion --------------------------------------------------------
   tar_target(counts_file,   "data/raw/GSE149614_HCC.scRNAseq.S71915.count.txt.gz", format = "file"),
@@ -51,5 +52,36 @@ list(
   tar_target(qc_png,
              save_plot(plot_qc(seu_flagged), "results/figures/02_qc_per_sample.png",
                        width = 12, height = 13),
+             format = "file"),
+
+  # ---- 3. Normalisation, integration, clustering -------------------------------
+  tar_target(seu_pca, normalise_and_pca(seu_qc)),
+  tar_target(seu_int, cluster_cells(integrate_harmony(seu_pca))),
+  tar_target(lisi_tsv,
+             write_tsv(integration_metrics(seu_int, label_col = author_label),
+                       "results/tables/03_integration_lisi.tsv"),
+             format = "file"),
+  tar_target(integration_png,
+             save_plot(plot_integration(seu_int), "results/figures/03_integration_umap.png",
+                       width = 14, height = 12),
+             format = "file"),
+
+  # ---- 4. Annotation -------------------------------------------------------------
+  tar_target(singler, run_singler(seu_int)),
+  tar_target(seu_annot, add_singler(seu_int, singler)),
+  tar_target(markers_tsv,
+             write_tsv(cluster_markers(seu_annot), "results/tables/04_cluster_markers.tsv"),
+             format = "file"),
+  tar_target(annotation_tsv,
+             write_tsv(annotation_table(seu_annot, author_label),
+                       "results/tables/04_cluster_annotation.tsv"),
+             format = "file"),
+  tar_target(annotation_png,
+             save_plot(plot_annotation(seu_annot, author_label),
+                       "results/figures/04_annotation_umap.png", width = 16, height = 12),
+             format = "file"),
+  tar_target(dotplot_png,
+             save_plot(plot_marker_dotplot(seu_annot), "results/figures/04_marker_dotplot.png",
+                       width = 16, height = 9),
              format = "file")
 )

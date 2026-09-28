@@ -9,7 +9,7 @@
 
 # Fixes the two packages that failed in 03_install_env.sh:
 #   - CellChat: needs NMF >= 0.23 (conda-forge ships 0.21) -> NMF from CRAN source
-#   - msigdbdf: not on r-universe for R 4.5 -> install from GitHub
+#   - msigdbrdata: not on r-universe for R 4.5 -> install from GitHub
 # Does not touch packages used by the QC/integration steps.
 # Launch from the project root:  sbatch slurm/04_fix_packages.sh
 # Report: fixpkg_report.txt
@@ -51,10 +51,10 @@ if (nmf_ok) remotes::install_github("jinworks/CellChat", lib = lib, repos = repo
                                     upgrade = "never", build_vignettes = FALSE)
 check("CellChat")
 
-cat("\n--- msigdbdf (GitHub) ---\n")
+cat("\n--- msigdbrdata (GitHub) ---\n")
 remotes::install_github("igordot/msigdbdf", lib = lib, repos = repos,
                         upgrade = "never", build_vignettes = FALSE)
-check("msigdbdf")
+check("msigdbrdata")
 '
 
 section "2. FUNCTIONAL CHECKS"
@@ -71,7 +71,7 @@ cat("LIANA consensus resource interactions:", lr, "\n")
 section "3. UPDATE LOCK FILES"
 "$MM" env export -p "$ENV" > "$PROJ/environment.lock.yml"
 "$MM" run -p "$ENV" Rscript -e '
-pk <- c("presto","CellChat","liana","msigdbdf","NMF","leidenbase")
+pk <- c("presto","CellChat","liana","msigdbrdata","NMF","leidenbase")
 rows <- lapply(pk, function(p) {
   if (!requireNamespace(p, quietly = TRUE)) return(NULL)
   d <- packageDescription(p)

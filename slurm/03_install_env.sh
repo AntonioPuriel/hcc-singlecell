@@ -69,7 +69,7 @@ try_install <- function(label, expr) {
 if (!requireNamespace("leidenbase", quietly = TRUE))
   try_install("leidenbase", install.packages("leidenbase", lib = lib, repos = repos))
 try_install("NMF", install.packages("NMF", lib = lib, repos = repos, type = "source"))  # CellChat needs >= 0.23
-try_install("msigdbdf", remotes::install_github("igordot/msigdbdf", lib = lib, repos = repos,
+try_install("msigdbrdata", remotes::install_github("igordot/msigdbdf", lib = lib, repos = repos,
             upgrade = "never", build_vignettes = FALSE))
 gh <- c(presto = "immunogenomics/presto",
         CellChat = "jinworks/CellChat",
@@ -84,7 +84,7 @@ for (n in names(gh))
 section "4. VERIFICACIÓN: ¿CARGA CADA PAQUETE?"
 "$MM" run -p "$ENV" Rscript -e '
 pk <- c("Seurat","SeuratObject","harmony","scDblFinder","SingleR","celldex","infercnv",
-        "DESeq2","fgsea","msigdbr","msigdbdf","slingshot","monocle3","igraph","leidenbase",
+        "DESeq2","fgsea","msigdbr","msigdbrdata","slingshot","monocle3","igraph","leidenbase",
         "liana","CellChat","presto","OmnipathR","targets","tarchetypes","crew","qs2",
         "data.table","dplyr","ggplot2","patchwork","rmarkdown","quarto")
 ok <- vapply(pk, function(p) requireNamespace(p, quietly = TRUE), logical(1))
@@ -99,7 +99,7 @@ section "5. EXPORTAR VERSIONES EXACTAS"
 "$MM" env export -p "$ENV" > "$PROJ/environment.lock.yml"
 echo "environment.lock.yml: $(wc -l < "$PROJ/environment.lock.yml") líneas"
 "$MM" run -p "$ENV" Rscript -e '
-pk <- c("presto","CellChat","liana","msigdbdf","leidenbase")
+pk <- c("presto","CellChat","liana","msigdbrdata","leidenbase")
 rows <- lapply(pk, function(p) {
   if (!requireNamespace(p, quietly = TRUE)) return(NULL)
   d <- packageDescription(p)

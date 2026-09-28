@@ -28,9 +28,9 @@ Raw data are not tracked. `slurm/02_download.sh` retrieves them from GEO and rec
 | Step | Methods |
 |---|---|
 | QC | Per-sample MAD-based outlier flags (UMIs, genes, % mitochondrial), doublets with `scDblFinder` run per sample |
-| Normalisation & integration | `SCTransform`, PCA, `Harmony` across **patients** |
-| Integration assessment | Unintegrated vs integrated embeddings, LISI (patient mixing vs cell-type separation) |
-| Clustering & annotation | Graph-based clustering (`igraph` Leiden), UMAP, canonical markers + `SingleR` |
+| Normalisation & integration | Log-normalisation, 3,000 HVGs (MT/ribosomal excluded), PCA, `Harmony` across **patients** |
+| Integration assessment | Unintegrated vs integrated embeddings; kNN-based LISI for patient (mixing), tissue site and author cell type (should stay separated) |
+| Clustering & annotation | Leiden clustering at several resolutions, UMAP, canonical markers, `presto` cluster markers, `SingleR` (HPCA) and comparison with the authors' labels |
 | Malignant cells | Copy-number inference (`inferCNV`) with non-tumour hepatocytes and immune cells as reference |
 | Cancer stem-like cells | EPCAM, PROM1, CD24, KRT19 module scores, cross-checked with a marker-independent potency score; restricted to malignant cells |
 | Myeloid compartment | Sub-clustering; monocyte/macrophage/DC states, SPP1⁺ TAMs; explicit immunosuppression gene set (CD274, IL10, TGFB1, SPP1, TREM2, APOE, CD163, VEGFA…) |
@@ -45,6 +45,7 @@ Raw data are not tracked. `slurm/02_download.sh` retrieves them from GEO and rec
 
 - **QC is a re-assessment.** The GEO matrix was already filtered by the authors (71,915 cells), so cells are flagged with per-sample robust thresholds (3 MADs) rather than new global cut-offs.
 - **No fixed mitochondrial cut-off.** Hepatocytes and many HCC tumour cells are mitochondria-rich; a 10–20% threshold would remove them preferentially. Only a per-sample upper MAD threshold and a lenient 50% cap are applied.
+- **Log-normalisation rather than SCTransform.** Differential expression is done on raw counts at the pseudobulk level, so SCTransform would only affect the embedding, at a memory cost that matters on a cluster limited to 2 GB per CPU.
 - **Integrate across patients, not tissue sites.** Tissue site is the biological signal of interest; correcting it would remove it.
 - **Differential expression at the pseudobulk level** with the patient as blocking factor, so that tumour vs non-tumour comparisons are made within patients and cells are not treated as independent replicates.
 - **Stem-like states are treated cautiously.** Cancer stem cells in HCC are a debated concept and four-marker scores are weak evidence on their own; they are only interpreted within CNV-confirmed malignant cells and alongside an independent potency estimate.
@@ -98,9 +99,9 @@ hcc-singlecell/
 
 - [x] Cluster diagnostics and environment feasibility (conda solve on glibc 2.17)
 - [x] Data download with checksums
-- [ ] Environment installation and lock files
-- [ ] QC
-- [ ] Integration and annotation
+- [x] Environment installation and lock files
+- [ ] QC *(code ready, running)*
+- [ ] Integration and annotation *(code ready)*
 - [ ] Stem-like and myeloid states
 - [ ] Differential expression and pathways
 - [ ] Trajectories

@@ -6,6 +6,7 @@ mamba/
 conda_pkgs/
 tools/
 tmp/
+cache/
 sing_cache/
 containers/
 
