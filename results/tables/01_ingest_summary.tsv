@@ -1,0 +1,11 @@
+check	value
+genes_in_matrix	25712
+cells_in_matrix	71915
+cells_in_metadata	71915
+cells_matched	71915
+cells_only_in_matrix	0
+cells_only_in_metadata	0
+nonzero_fraction	0.0793
+patients	10
+samples	21
+sites	Lymph, Normal, PVTT, Tumor
