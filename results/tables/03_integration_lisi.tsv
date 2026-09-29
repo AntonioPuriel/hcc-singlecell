@@ -1,0 +1,7 @@
+embedding	label	n_labels	median_lisi	mean_lisi
+unintegrated	patient	10	1.142	1.715
+unintegrated	site	4	1	1.162
+unintegrated	cell_type	6	1	1.055
+harmony	patient	10	3.041	3.096
+harmony	site	4	1.069	1.312
+harmony	cell_type	6	1	1.059
