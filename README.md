@@ -51,6 +51,31 @@ Raw data are not tracked. `slurm/02_download.sh` retrieves them from GEO and rec
 - **Stem-like states are treated cautiously.** Cancer stem cells in HCC are a debated concept and four-marker scores are weak evidence on their own; they are only interpreted within CNV-confirmed malignant cells and alongside an independent potency estimate.
 - **Myeloid-derived suppressor cells** are hard to separate from monocytes/neutrophils in scRNA-seq alone; states are named by function-associated programmes rather than by assumed identity.
 
+## Results
+
+### 1. Data and study design
+
+71,915 cells from 21 samples (10 patients) were read from the author-provided count matrix; all cells matched the metadata. Tumour and non-tumour tissue are paired in 8 patients; PVTT is available for 2 patients and lymph-node metastasis for 1 ([`01_cells_per_patient_site.tsv`](results/tables/01_cells_per_patient_site.tsv)).
+
+### 2. Quality control
+
+The matrix had already been filtered by the authors: mitochondrial content stops sharply at 20% and UMIs have a hard lower bound in every sample. QC therefore re-assesses that filtering rather than repeating it.
+
+![QC per sample](results/figures/02_qc_per_sample.png)
+
+Several tumour samples show bimodal UMI distributions (small immune cells vs large tumour/hepatocyte-like cells). Per-sample MAD thresholds on the upper tail would have removed cells by type rather than by quality:
+
+| Author cell type | Cells | Upper-MAD % mito rule | Upper-MAD UMI rule |
+|---|---:|---:|---:|
+| Hepatocyte (incl. malignant) | 20,782 | 13.0% | 1.8% |
+| Endothelial | 3,644 | 11.2% | 8.4% |
+| Fibroblast | 2,266 | 9.1% | 4.2% |
+| B | 3,685 | 5.3% | 9.3% |
+| Myeloid | 15,947 | 4.2% | 8.8% |
+| T/NK | 25,591 | 3.0% | 1.1% |
+
+With the final rules, **67,908 cells** are kept; removals are almost entirely scDblFinder doublets (3–7% per sample) ([`02_qc_summary.tsv`](results/tables/02_qc_summary.tsv), [`02_qc_flags_by_celltype.tsv`](results/tables/02_qc_flags_by_celltype.tsv)).
+
 ## Computing environment
 
 The pipeline runs on a shared SLURM cluster (CentOS 7, glibc 2.17, no root access, per-user storage quota).
