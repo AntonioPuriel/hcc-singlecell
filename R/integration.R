@@ -21,8 +21,10 @@ normalise_and_pca <- function(seu, n_hvg = 3000, n_pcs = 50, seed = 1234) {
 
 integrate_harmony <- function(seu, batch = "patient", dims = 1:30, seed = 1234) {
   set.seed(seed)
+  # project.dim = FALSE: gene loadings are not projected (they would need the
+  # scale.data layer, which is dropped after PCA to save memory and disk)
   seu <- harmony::RunHarmony(seu, group.by.vars = batch, reduction.use = "pca",
-                             dims.use = dims, verbose = FALSE)
+                             dims.use = dims, project.dim = FALSE, verbose = FALSE)
   # Unintegrated and integrated UMAPs, both kept for comparison
   seu <- Seurat::RunUMAP(seu, reduction = "pca", dims = dims, reduction.name = "umap_pca",
                          seed.use = seed, verbose = FALSE)
