@@ -87,5 +87,53 @@ list(
   tar_target(dotplot_png,
              save_plot(plot_marker_dotplot(seu_annot), "results/figures/04_marker_dotplot.png",
                        width = 16, height = 9),
+             format = "file"),
+
+  # ---- 5. Compartments ------------------------------------------------------------
+  # Cluster numbers refer to the first-pass Leiden clustering (res 0.5, seed 1234);
+  # check_compartments() stops the pipeline if they no longer match.
+  tar_target(compartment_map, list(
+    T_NK        = c(0, 2, 9, 12),
+    Myeloid     = c(1, 5, 7, 18),
+    pDC         = 22,
+    B_plasma    = c(14, 15),
+    Endothelial = c(8, 16),
+    Fibroblast  = 10,
+    Epithelial  = c(3, 4, 6, 11, 13, 17, 21),
+    Flagged     = c(19, 20)    # possible residual doublets / ambient RNA, excluded downstream
+  )),
+  tar_target(seu_comp, add_compartments(seu_annot, compartment_map)),
+  tar_target(compartment_tsv,
+             write_tsv(check_compartments(seu_comp, author_label, list(
+               T_NK = "T/NK", Myeloid = "Myeloid", B_plasma = "B", Endothelial = "Endothelial",
+               Fibroblast = "Fibroblast", Epithelial = "Hepatocyte")),
+               "results/tables/05_compartment_check.tsv"),
+             format = "file"),
+
+  # ---- 6. Malignant cells (inferCNV, per patient) ---------------------------------
+  tar_target(gene_order_file, "data/ref/gene_order_hg38.txt", format = "file"),
+  tar_target(cnv_patients, epithelial_patients(seu_comp)),
+  tar_target(cnv, run_infercnv_patient(seu_comp, cnv_patients, gene_order_file),
+             pattern = map(cnv_patients)),
+  tar_target(cnv_calls, call_malignant(cnv)),
+  tar_target(seu_cnv, add_cnv(seu_comp, cnv_calls)),
+  tar_target(cnv_tsv, write_tsv(cnv_summary(cnv_calls), "results/tables/06_cnv_calls_by_sample.tsv"),
+             format = "file"),
+  tar_target(cnv_png, save_plot(plot_cnv(cnv_calls), "results/figures/06_cnv_scores.png",
+                                width = 14, height = 10),
+             format = "file"),
+
+  # ---- 7. Myeloid states -------------------------------------------------------------
+  tar_target(seu_myeloid, subcluster_myeloid(seu_cnv)),
+  tar_target(myeloid_marker_table, myeloid_markers(seu_myeloid)),
+  tar_target(myeloid_markers_tsv,
+             write_tsv(myeloid_marker_table, "results/tables/07_myeloid_markers.tsv"),
+             format = "file"),
+  tar_target(myeloid_summary_tsv,
+             write_tsv(myeloid_summary(seu_myeloid, myeloid_marker_table),
+                       "results/tables/07_myeloid_states.tsv"),
+             format = "file"),
+  tar_target(myeloid_png, save_plot(plot_myeloid(seu_myeloid), "results/figures/07_myeloid_states.png",
+                                    width = 16, height = 13),
              format = "file")
 )

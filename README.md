@@ -31,9 +31,9 @@ Raw data are not tracked. `slurm/02_download.sh` retrieves them from GEO and rec
 | Normalisation & integration | Log-normalisation, 3,000 HVGs (MT/ribosomal excluded), PCA, `Harmony` across **patients** |
 | Integration assessment | Unintegrated vs integrated embeddings; kNN-based LISI for patient (mixing), tissue site and author cell type (should stay separated) |
 | Clustering & annotation | Leiden clustering at several resolutions, UMAP, canonical markers, `presto` cluster markers, `SingleR` (HPCA) and comparison with the authors' labels |
-| Malignant cells | Copy-number inference (`inferCNV`) with non-tumour hepatocytes and immune cells as reference |
+| Malignant cells | `inferCNV` per patient (epithelial cells vs the patient's own immune/stromal cells); per-cell CNV score and correlation with the tumour's consensus profile; non-tumour epithelium as negative check |
 | Cancer stem-like cells | EPCAM, PROM1, CD24, KRT19 module scores, cross-checked with a marker-independent potency score; restricted to malignant cells |
-| Myeloid compartment | Sub-clustering; monocyte/macrophage/DC states, SPP1⁺ TAMs; explicit immunosuppression gene set (CD274, IL10, TGFB1, SPP1, TREM2, APOE, CD163, VEGFA…) |
+| Myeloid compartment | Re-analysis of myeloid cells alone (HVGs, PCA, Harmony, Leiden); immunosuppression programme score; tumour vs non-tumour enrichment of each state in paired patients |
 | Differential expression | Pseudobulk `DESeq2` on raw counts, `~ patient + tissue` |
 | Pathway enrichment | `fgsea` (Hallmark, Reactome) |
 | Trajectories | `slingshot` / `monocle3` on myeloid cells |
@@ -76,6 +76,35 @@ Several tumour samples show bimodal UMI distributions (small immune cells vs lar
 
 With the final rules, **67,908 cells** are kept; removals are almost entirely scDblFinder doublets (3–7% per sample) ([`02_qc_summary.tsv`](results/tables/02_qc_summary.tsv), [`02_qc_flags_by_celltype.tsv`](results/tables/02_qc_flags_by_celltype.tsv)).
 
+### 3. Integration across patients
+
+Harmony (batch = patient) raised the median patient LISI from 1.1 to 3.0 (10 patients), while cell-type LISI stayed at 1.0, i.e. patients mix within cell types and cell types are not merged. Tissue-site LISI barely moved (1.0 → 1.07), as intended: site is biology, not batch ([`03_integration_lisi.tsv`](results/tables/03_integration_lisi.tsv)).
+
+![Integration](results/figures/03_integration_umap.png)
+
+Immune and stromal cells mix across patients after integration; hepatocyte-lineage cells remain partly patient-specific (one cluster is 67% from a single patient). That is expected for malignant cells, whose copy-number profiles differ between tumours, and is why malignant cells will be identified with inferCNV rather than by forcing further integration.
+
+### 4. Clustering and first-pass annotation
+
+Leiden clustering (resolution 0.5) gives 23 clusters; majority SingleR (HPCA) labels and the authors' labels agree with the markers for all major compartments ([`04_cluster_annotation.tsv`](results/tables/04_cluster_annotation.tsv), [`04_cluster_markers.tsv`](results/tables/04_cluster_markers.tsv)).
+
+![Annotation](results/figures/04_annotation_umap.png)
+
+![Markers](results/figures/04_marker_dotplot.png)
+
+| Compartment | Clusters | Key markers |
+|---|---|---|
+| T / NK | 0, 2, 9, 12 (cycling) | CD3D, NKG7, GZMA, IL32; MKI67/TOP2A in 12 |
+| Myeloid | 1, 5, 7, 18 (cycling), 22 | SPP1, CD68 (1); LYZ, HLA-DR (5); CD5L, C1QA, CD163 (7, Kupffer-like); LILRA4, IRF4 (22, pDC) |
+| B / plasma | 14, 15 | CD79A; MZB1, JCHAIN, IGHG1 |
+| Endothelial | 8, 16 | PECAM1, VWF; CLEC4G, FCN2, CRHBP (16, sinusoidal) |
+| Fibroblast / stellate | 10 | ACTA2, TAGLN, COL1A2 |
+| Hepatocyte-like | 3, 11, 13 | ALB, APOA1, TTR, ORM1, GSTA1 |
+| Tumour-like | 4, 6 (cycling), 17 | GPC3, MDK, CD24, KRT8/18; SPINK1, AGR2 (17) |
+| Cholangiocyte | 21 | EPCAM, KRT19, KRT7 |
+
+Two observations guide the next steps: an **SPP1⁺ macrophage** cluster (1), a candidate immunosuppressive TAM population, and a **CD24⁺ MDK⁺ epithelial** cluster (4) with a proliferating counterpart (6), candidate stem-like tumour states. Both are hypotheses until malignant cells are confirmed by CNV and the myeloid compartment is sub-clustered. Clusters 19 (plasma-like, 76% one patient) and 20 (T cells with hepatocyte transcripts) are flagged as possible residual doublets or ambient RNA.
+
 ## Computing environment
 
 The pipeline runs on a shared SLURM cluster (CentOS 7, glibc 2.17, no root access, per-user storage quota).
@@ -92,6 +121,7 @@ sbatch slurm/00_check_env.sh      # cluster diagnostics (modules, network, quota
 sbatch slurm/01_test_conda.sh     # dry-run: can the environment be solved on this system?
 sbatch slurm/02_download.sh       # GEO download + checksums
 sbatch slurm/03_install_env.sh    # create env/, install GitHub packages, export lock files
+sbatch slurm/05_download_refs.sh  # hg38 gene positions for inferCNV
 sbatch slurm/10_run_pipeline.sh   # run or resume the targets pipeline
 ```
 
@@ -126,8 +156,10 @@ hcc-singlecell/
 - [x] Data download with checksums
 - [x] Environment installation and lock files
 - [x] QC (67,908 cells kept)
-- [ ] Integration and annotation *(code ready)*
-- [ ] Stem-like and myeloid states
+- [x] Integration and first-pass annotation
+- [ ] Malignant-cell identification (inferCNV) *(code ready)*
+- [ ] Myeloid states *(code ready)*
+- [ ] Stem-like tumour states
 - [ ] Differential expression and pathways
 - [ ] Trajectories
 - [ ] Cell–cell communication and candidate ranking
