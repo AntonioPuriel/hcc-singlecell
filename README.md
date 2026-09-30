@@ -32,13 +32,13 @@ Raw data are not tracked. `slurm/02_download.sh` retrieves them from GEO and rec
 | Integration assessment | Unintegrated vs integrated embeddings; kNN-based LISI for patient (mixing), tissue site and author cell type (should stay separated) |
 | Clustering & annotation | Leiden clustering at several resolutions, UMAP, canonical markers, `presto` cluster markers, `SingleR` (HPCA) and comparison with the authors' labels |
 | Malignant cells | `inferCNV` per patient (epithelial cells vs the patient's own immune/stromal cells); per-cell CNV score and correlation with the tumour's consensus profile; non-tumour epithelium as negative check |
-| Cancer stem-like cells | EPCAM, PROM1, CD24, KRT19 module scores, cross-checked with a marker-independent potency score; restricted to malignant cells |
+| Cancer stem-like cells | Malignant cells only: CSC marker score (EPCAM, PROM1, CD24, KRT19, CD44, THY1, ANPEP, SOX9) AND within-sample gene-count rank (the core CytoTRACE signal, marker-independent), both in the patient's top quartile; per-patient agreement between the two reported |
 | Myeloid compartment | Re-analysis of myeloid cells alone (HVGs, PCA, Harmony, Leiden); immunosuppression programme score; tumour vs non-tumour enrichment of each state in paired patients |
-| Differential expression | Pseudobulk `DESeq2` on raw counts, `~ patient + tissue` |
+| Differential expression | Pseudobulk `DESeq2` on raw counts, `~ patient + group`: stem-like vs other malignant cells; myeloid tumour vs non-tumour |
 | Pathway enrichment | `fgsea` (Hallmark, Reactome) |
 | Trajectories | `slingshot` / `monocle3` on myeloid cells |
-| Cell–cell communication | `LIANA` consensus / `CellChat`; **differential** (tumour vs non-tumour) |
-| Candidate prioritisation | Ranked mediators combining interaction score, ligand/receptor DE and tissue specificity |
+| Cell–cell communication | `LIANA` consensus (NATMI, Connectome, log2FC, SingleCellSignalR) on tumour-site cells |
+| Candidate prioritisation | Stem-like ↔ TAM interactions ranked by the mean of three ranks: LIANA aggregate rank, specificity vs other malignant cells, and pseudobulk DE of the stem-like-side gene — an ordering of hypotheses for validation, not a test |
 | Spatial (stretch) | Reference mapping, niche detection, colocalisation statistics |
 
 ### Design decisions
@@ -188,10 +188,10 @@ hcc-singlecell/
 - [x] Integration and first-pass annotation
 - [ ] Malignant-cell identification (inferCNV) *(first pass done; reference revised, re-run pending)*
 - [x] Myeloid states
-- [ ] Stem-like tumour states
-- [ ] Differential expression and pathways
+- [ ] Stem-like tumour states *(code ready)*
+- [ ] Differential expression and pathways *(code ready)*
 - [ ] Trajectories
-- [ ] Cell–cell communication and candidate ranking
+- [ ] Cell–cell communication and candidate ranking *(code ready)*
 - [ ] Spatial mapping (stretch)
 - [ ] Report published on GitHub Pages
 

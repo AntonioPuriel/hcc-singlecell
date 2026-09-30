@@ -139,5 +139,42 @@ list(
              format = "file"),
   tar_target(myeloid_png, save_plot(plot_myeloid(seu_myeloid), "results/figures/07_myeloid_states.png",
                                     width = 16, height = 13),
+             format = "file"),
+
+  # ---- 8. Stem-like tumour states ----------------------------------------------------
+  tar_target(seu_malignant, cluster_malignant(score_stemlike(seu_cnv))),
+  tar_target(stemlike_tsv, write_tsv(stemlike_summary(seu_malignant), "results/tables/08_stemlike_by_patient.tsv"),
+             format = "file"),
+  tar_target(stemlike_png, save_plot(plot_stemlike(seu_malignant), "results/figures/08_stemlike.png",
+                                     width = 14, height = 16),
+             format = "file"),
+
+  # ---- 9. Pseudobulk differential expression and pathways -------------------------------
+  tar_target(de_stem, de_paired(pseudobulk(seu_malignant, "stem_group"), test = "stem", reference = "other")),
+  tar_target(de_myeloid, de_paired(pseudobulk(seu_myeloid, "site"), test = "Tumor", reference = "Normal")),
+  tar_target(gsea_stem, hallmark_gsea(de_stem)),
+  tar_target(gsea_myeloid, hallmark_gsea(de_myeloid)),
+  tar_target(de_stem_tsv, write_tsv(de_stem, "results/tables/09_de_stemlike_vs_other_malignant.tsv"),
+             format = "file"),
+  tar_target(de_myeloid_tsv, write_tsv(de_myeloid, "results/tables/09_de_myeloid_tumour_vs_normal.tsv"),
+             format = "file"),
+  tar_target(gsea_tsv, write_tsv(rbind(gsea_stem, gsea_myeloid), "results/tables/09_hallmark_gsea.tsv"),
+             format = "file"),
+  tar_target(gsea_png, save_plot(plot_gsea(list(gsea_stem, gsea_myeloid)), "results/figures/09_hallmark_gsea.png",
+                                 width = 14, height = 7),
+             format = "file"),
+
+  # ---- 10. Communication and candidate mediators ---------------------------------------
+  tar_target(myeloid_label_check, check_myeloid_labels(myeloid_marker_table)),
+  tar_target(seu_groups, label_cell_groups(seu_cnv, seu_malignant, seu_myeloid, myeloid_label_check)),
+  tar_target(liana_res, run_liana_tumour(seu_groups)),
+  tar_target(liana_tsv, write_tsv(liana_res[liana_res$aggregate_rank < 0.05, ],
+                                  "results/tables/10_liana_tumour_top.tsv"),
+             format = "file"),
+  tar_target(mediators, prioritise_mediators(liana_res, de_stem)),
+  tar_target(mediators_tsv, write_tsv(mediators, "results/tables/10_prioritised_mediators.tsv"),
+             format = "file"),
+  tar_target(mediators_png, save_plot(plot_mediators(mediators), "results/figures/10_prioritised_mediators.png",
+                                      width = 11, height = 9),
              format = "file")
 )
