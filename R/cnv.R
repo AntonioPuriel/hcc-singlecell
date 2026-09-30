@@ -81,10 +81,11 @@ run_infercnv_patient <- function(seu, patient, gene_order_file, n_ref_max = 1000
 
 call_malignant <- function(cnv, q = 0.99) {
   do.call(rbind, lapply(split(cnv, cnv$patient), function(d) {
+    d$cnv_cor[is.na(d$cnv_cor)] <- 0   # flat profile (sd = 0): no similarity to the tumour profile
     cal <- d$is_ref & d$ref_type %in% "epithelium"       # lineage-matched calibration
     if (sum(cal) < 50) cal <- d$is_ref
-    thr_s <- stats::quantile(d$cnv_score[cal], q)
-    thr_c <- stats::quantile(d$cnv_cor[cal], q)
+    thr_s <- stats::quantile(d$cnv_score[cal], q, na.rm = TRUE)
+    thr_c <- stats::quantile(d$cnv_cor[cal], q, na.rm = TRUE)
     hi_s <- d$cnv_score > thr_s; hi_c <- d$cnv_cor > thr_c
     d$cnv_call <- ifelse(d$is_ref, "reference",
                   ifelse(hi_s & hi_c, "malignant",
