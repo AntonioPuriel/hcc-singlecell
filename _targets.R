@@ -110,6 +110,10 @@ list(
                "results/tables/05_compartment_check.tsv"),
              format = "file"),
 
+  tar_target(compartment_patient_tsv,
+             write_tsv(compartment_by_patient(seu_comp), "results/tables/05_cells_per_patient_compartment.tsv"),
+             format = "file"),
+
   # ---- 6. Malignant cells (inferCNV, per patient) ---------------------------------
   tar_target(gene_order_file, "data/ref/gene_order_hg38.txt", format = "file"),
   tar_target(cnv_patients, epithelial_patients(seu_comp)),

@@ -28,3 +28,10 @@ check_compartments <- function(seu, author_col, expected, min_agreement = 0.8) {
          ". Re-check cluster numbers in the compartment_map target.")
   out
 }
+
+#' Cells per patient x compartment: shows which patients can enter each analysis
+#' (e.g. inferCNV needs >= 50 epithelial cells).
+compartment_by_patient <- function(seu) {
+  tab <- as.data.frame.matrix(table(seu$patient, seu$compartment))
+  cbind(patient = rownames(tab), tab, row.names = NULL)
+}

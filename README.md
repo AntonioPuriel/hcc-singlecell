@@ -105,6 +105,35 @@ Leiden clustering (resolution 0.5) gives 23 clusters; majority SingleR (HPCA) la
 
 Two observations guide the next steps: an **SPP1⁺ macrophage** cluster (1), a candidate immunosuppressive TAM population, and a **CD24⁺ MDK⁺ epithelial** cluster (4) with a proliferating counterpart (6), candidate stem-like tumour states. Both are hypotheses until malignant cells are confirmed by CNV and the myeloid compartment is sub-clustered. Clusters 19 (plasma-like, 76% one patient) and 20 (T cells with hepatocyte transcripts) are flagged as possible residual doublets or ambient RNA.
 
+### 5. Malignant cells (inferCNV) — first pass and revision
+
+inferCNV was run per patient (9 patients with ≥ 50 epithelial cells). In five patients malignant and reference cells separate cleanly (e.g. HCC02, HCC04, HCC05, HCC09: 93–100% of tumour epithelium called malignant, non-tumour epithelium of HCC04 and HCC09 at 0–2%).
+
+![CNV first pass](results/figures/06_cnv_scores.png)
+
+The first pass also exposed a design flaw: with immune/stromal cells as the only reference, non-tumour epithelium was called malignant in 31–58% of cells in four patients (HCC03, HCC05, HCC06, HCC10). Hepatocyte-specific genes cluster along some chromosomes, so lineage differences read as copy-number change. The reference now also includes non-tumour epithelium pooled from the other patients (leave-one-patient-out), and thresholds are calibrated on that lineage-matched reference; each patient's own non-tumour epithelium stays out and remains the negative check. *(Re-run pending.)*
+
+### 6. Myeloid states
+
+Re-analysis of 14,959 myeloid cells gives 12 states. Tumour enrichment is the median, over the 8 patients with paired tumour and non-tumour tissue, of log2(fraction of the patient's tumour myeloid cells in the state / fraction in non-tumour) ([`07_myeloid_states.tsv`](results/tables/07_myeloid_states.tsv)).
+
+![Myeloid states](results/figures/07_myeloid_states.png)
+
+| State | Identity (markers) | Cells | Tumour-site cells | log2 tumour / non-tumour | Immunosuppression score |
+|---|---|---:|---:|---:|---:|
+| 3 | SPP1⁺ TAM (SPP1, LGALS1, S100A10) | 2,002 | 98% | +1.6 | 0.20 |
+| 2 | C1Q⁺ APOE⁺ TAM (C1QC, APOE, APOC1, TREM2) | 2,109 | 96% | +4.6 | 0.19 |
+| 0 | APOE⁺ LGMN⁺ TAM (RNASE1, APOE, LGMN, A2M) | 2,658 | 97% | +3.8 | 0.19 |
+| 9 | Cycling macrophages (MKI67, STMN1) | 456 | 93% | +1.9 | 0.08 |
+| 5 | Stress-high monocyte-like (HSP genes, FCN1) | 1,134 | 87% | +2.2 | −0.05 |
+| 1 | Kupffer cells (CD5L, MARCO, VCAM1, CD163) | 2,542 | 3% | −5.8 | 0.13 |
+| 4 | Classical monocytes (FCN1, S100A4) | 1,240 | 23% | −3.3 | −0.22 |
+| 6 | cDC2 / mature DC (CD1C, LAMP3, CCR7) | 1,068 | 46% | −2.2 | −0.17 |
+| 8 | cDC1 (CLEC9A, IDO1) | 479 | 33% | −2.9 | −0.18 |
+| 7 | MHC-II-high macrophages / DC | 926 | 52% | −1.9 | −0.03 |
+
+The three tumour-associated macrophage states (0, 2, 3; ~6,800 cells) are almost confined to tumour sites, enriched 3- to 24-fold over paired non-tumour liver, and carry the highest immunosuppression score; non-tumour liver is dominated by Kupffer cells and monocytes. SPP1⁺ TAMs (state 3) are the prime candidate partner for stem-like tumour cells in the communication analysis. Caveats: state 5 carries a dissociation-stress signature, and states 10 (Kupffer cells with hepatocyte transcripts, 264 cells) and 11 (myeloid–T doublets, 81 cells) are treated as artefacts.
+
 ## Computing environment
 
 The pipeline runs on a shared SLURM cluster (CentOS 7, glibc 2.17, no root access, per-user storage quota).
@@ -157,8 +186,8 @@ hcc-singlecell/
 - [x] Environment installation and lock files
 - [x] QC (67,908 cells kept)
 - [x] Integration and first-pass annotation
-- [ ] Malignant-cell identification (inferCNV) *(code ready)*
-- [ ] Myeloid states *(code ready)*
+- [ ] Malignant-cell identification (inferCNV) *(first pass done; reference revised, re-run pending)*
+- [x] Myeloid states
 - [ ] Stem-like tumour states
 - [ ] Differential expression and pathways
 - [ ] Trajectories

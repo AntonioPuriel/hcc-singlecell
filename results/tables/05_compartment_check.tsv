@@ -1,0 +1,7 @@
+compartment	n_cells	expected_author_labels	agreement
+T_NK	22990	T/NK	0.973
+Myeloid	14959	Myeloid	0.982
+B_plasma	2666	B	0.95
+Endothelial	3686	Endothelial	0.914
+Fibroblast	2049	Fibroblast	0.991
+Epithelial	20146	Hepatocyte	0.95
