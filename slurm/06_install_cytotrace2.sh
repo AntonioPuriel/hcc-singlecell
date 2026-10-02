@@ -9,6 +9,11 @@
 
 # Installs CytoTRACE2 (GitHub, R version) and its CRAN dependencies into env/,
 # then runs it on a small synthetic matrix to check that it works.
+# HiClimR (a CytoTRACE2 dependency) needs ncdf4. Built from CRAN source, ncdf4
+# picks up the system netCDF (4.3.3 on CentOS 7), which is too old to compile
+# it; ncdf4 therefore comes as a conda-forge binary with its own libnetcdf.
+# --freeze-installed keeps every package already in env/ unchanged; the report
+# lists any difference before/after.
 # Does not touch packages used by earlier pipeline steps.
 # Launch from the project root:  sbatch slurm/06_install_cytotrace2.sh
 # Report: cytotrace2_report.txt
@@ -27,6 +32,13 @@ export TMPDIR="$PROJ/tmp"
 mkdir -p "$TMPDIR"
 MM="$PROJ/tools/bin/micromamba"
 
+section "0. ncdf4 FROM CONDA-FORGE"
+"$MM" list -p "$ENV" > "$TMPDIR/pkgs_before.txt"
+"$MM" install -y -p "$ENV" -c conda-forge --freeze-installed r-ncdf4
+"$MM" list -p "$ENV" > "$TMPDIR/pkgs_after.txt"
+echo "--- packages added or changed in env/:"
+diff "$TMPDIR/pkgs_before.txt" "$TMPDIR/pkgs_after.txt" | grep '^[<>]' || echo "(none)"
+
 section "1. INSTALL"
 "$MM" run -p "$ENV" Rscript -e '
 options(Ncpus = 4, timeout = 900)
@@ -38,7 +50,7 @@ check <- function(pkg) {
               if (ok) as.character(packageVersion(pkg)) else "-"))
   invisible(ok)
 }
-deps <- c("data.table", "doParallel", "dplyr", "HiClimR", "magrittr", "plyr", "Rfast", "RSpectra", "stringr")
+deps <- c("ncdf4", "data.table", "doParallel", "dplyr", "HiClimR", "magrittr", "plyr", "Rfast", "RSpectra", "stringr")
 missing <- deps[!vapply(deps, requireNamespace, logical(1), quietly = TRUE)]
 cat("Missing CRAN dependencies:", if (length(missing)) missing else "none", "\n")
 if (length(missing)) install.packages(missing, lib = lib, repos = repos)
