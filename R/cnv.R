@@ -15,8 +15,19 @@
 # groups: the patient's own immune/stromal cells AND non-tumour-site epithelial
 # cells pooled from the OTHER patients (leave-one-patient-out). The patient's own
 # non-tumour epithelium stays out of the reference and remains an independent
-# negative check. Thresholds are the 99th percentile of the epithelial reference
-# cells, i.e. lineage-matched.
+# negative check.
+#
+# Calling rule, revised after the second run. Requiring BOTH cnv_score and
+# cnv_cor above the 99th percentile of the epithelial reference left most tumour
+# epithelium "unresolved" in some patients (HCC03: 1.4% malignant): the pooled
+# epithelial reference comes from nine other livers, so its CNV score is widely
+# spread and overlaps the tumour. The correlation with the patient's own tumour
+# profile separates the two in every patient. Cells are therefore called on
+# cnv_cor, calibrated on the lineage-matched reference:
+#   malignant      cnv_cor > 99th percentile of the epithelial reference
+#   non-malignant  cnv_cor < 95th percentile
+#   unresolved     in between
+# cnv_score is still reported and plotted.
 
 epithelial_patients <- function(seu, min_cells = 50) {
   tab <- table(seu$patient[seu$compartment == "Epithelial"])
@@ -79,18 +90,17 @@ run_infercnv_patient <- function(seu, patient, gene_order_file, n_ref_max = 1000
   res
 }
 
-call_malignant <- function(cnv, q = 0.99) {
+call_malignant <- function(cnv, q_hi = 0.99, q_lo = 0.95) {
   do.call(rbind, lapply(split(cnv, cnv$patient), function(d) {
     d$cnv_cor[is.na(d$cnv_cor)] <- 0   # flat profile (sd = 0): no similarity to the tumour profile
     cal <- d$is_ref & d$ref_type %in% "epithelium"       # lineage-matched calibration
     if (sum(cal) < 50) cal <- d$is_ref
-    thr_s <- stats::quantile(d$cnv_score[cal], q, na.rm = TRUE)
-    thr_c <- stats::quantile(d$cnv_cor[cal], q, na.rm = TRUE)
-    hi_s <- d$cnv_score > thr_s; hi_c <- d$cnv_cor > thr_c
+    thr_hi <- stats::quantile(d$cnv_cor[cal], q_hi, na.rm = TRUE)
+    thr_lo <- stats::quantile(d$cnv_cor[cal], q_lo, na.rm = TRUE)
     d$cnv_call <- ifelse(d$is_ref, "reference",
-                  ifelse(hi_s & hi_c, "malignant",
-                  ifelse(!hi_s & !hi_c, "non-malignant", "unresolved")))
-    d$thr_score <- thr_s; d$thr_cor <- thr_c
+                  ifelse(d$cnv_cor > thr_hi, "malignant",
+                  ifelse(d$cnv_cor < thr_lo, "non-malignant", "unresolved")))
+    d$thr_cor <- thr_hi; d$thr_cor_lo <- thr_lo
     d
   }))
 }
@@ -118,17 +128,18 @@ cnv_summary <- function(calls) {
 plot_cnv <- function(calls) {
   calls$group <- ifelse(calls$is_ref, paste0("reference (", sub("_", "/", calls$ref_type), ")"),
                         paste("epithelial,", calls$site))
-  thr <- unique(calls[, c("patient", "thr_score", "thr_cor")])
+  thr <- unique(calls[, c("patient", "thr_cor", "thr_cor_lo")])
   ggplot2::ggplot(calls, ggplot2::aes(cnv_score, cnv_cor, colour = group)) +
     ggplot2::geom_point(size = 0.3, alpha = 0.4) +
-    ggplot2::geom_vline(data = thr, ggplot2::aes(xintercept = thr_score), linetype = 2) +
     ggplot2::geom_hline(data = thr, ggplot2::aes(yintercept = thr_cor), linetype = 2) +
+    ggplot2::geom_hline(data = thr, ggplot2::aes(yintercept = thr_cor_lo), linetype = 3) +
     ggplot2::facet_wrap(~ patient, scales = "free_x") +
     ggplot2::scale_colour_manual(values = c("reference (immune/stromal)" = "grey75",
       "reference (epithelium)" = "grey35",
       "epithelial, Normal" = "#009E73", "epithelial, Tumor" = "#D55E00",
       "epithelial, PVTT" = "#CC79A7", "epithelial, Lymph" = "#0072B2")) +
     ggplot2::guides(colour = ggplot2::guide_legend(override.aes = list(size = 3, alpha = 1))) +
-    ggplot2::labs(x = "CNV score", y = "correlation with tumour CNV profile", colour = NULL) +
+    ggplot2::labs(x = "CNV score", y = "correlation with tumour CNV profile", colour = NULL,
+                  caption = "dashed: malignant threshold (99th pct of epithelial reference); dotted: non-malignant (95th pct)") +
     ggplot2::theme_bw(base_size = 9)
 }
