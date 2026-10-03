@@ -1,0 +1,192 @@
+---
+title: "hcc-singlecell: tumour progenitor-like states and immunosuppressive myeloid cells in human HCC"
+author: "Antonio Puriel Hernández"
+date: "`r format(Sys.Date(), '%d %B %Y')`"
+params:
+  root: "."
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 2
+    number_sections: false
+    theme: flatly
+    self_contained: true
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, results = "asis")
+root <- params$root
+tab_path <- function(f) file.path(root, "results", "tables", f)
+fig_path <- function(f) file.path(root, "results", "figures", f)
+
+# Helpers print markdown directly (chunks are results = "asis"), so several tables
+# and figures can share one chunk. A missing file means the step did not run.
+missing_note <- function(f) cat("*Not available: `", f, "` was not produced in this run.*\n\n", sep = "")
+show_tab <- function(f, n = 20, cols = NULL, digits = 3) {
+  p <- tab_path(f)
+  if (!file.exists(p)) return(invisible(missing_note(f)))
+  d <- data.table::fread(p, data.table = FALSE)
+  if (!is.null(cols)) d <- d[, intersect(cols, names(d)), drop = FALSE]
+  num <- vapply(d, is.numeric, logical(1))
+  d[num] <- lapply(d[num], function(x) ifelse(is.na(x), "", as.character(signif(x, digits))))
+  cat(knitr::kable(utils::head(d, n), format = "pipe", row.names = FALSE), sep = "\n")
+  cat("\n\n")
+}
+show_fig <- function(f) {
+  p <- fig_path(f)
+  if (!file.exists(p)) return(invisible(missing_note(f)))
+  cat("![](", normalizePath(p), ")\n\n", sep = "")
+}
+commit <- tryCatch(system2("git", c("-C", root, "log", "-1", "--format=%h %ad", "--date=short"), stdout = TRUE, stderr = FALSE),
+                   error = function(e) "unknown", warning = function(w) "unknown")
+```
+
+Code: [github.com/AntonioPuriel/hcc-singlecell](https://github.com/AntonioPuriel/hcc-singlecell) · commit `r commit`
+
+## Aim
+
+Characterise cellular heterogeneity in human hepatocellular carcinoma (HCC) and infer communication
+between tumour cells with progenitor/stem-like features and immunosuppressive myeloid cells, to
+prioritise candidate mediators for experimental validation.
+
+Data: GSE149614 (Lu et al., *Nat Commun* 2022), author count matrix; 10 patients, 21 samples, four sites
+(tumour, non-tumour liver, portal vein tumour thrombus, lymph-node metastasis). Every step runs in one
+R `targets` pipeline on an HPC cluster; this page is its last step.
+
+## 1. Data
+
+```{r}
+show_tab("01_ingest_summary.tsv")
+show_tab("01_cells_per_patient_site.tsv")
+```
+
+## 2. Quality control
+
+The author matrix was already filtered (mitochondrial fraction capped at 20%). A per-sample upper MAD cut on
+mitochondrial fraction would have removed far more hepatocytes than T/NK cells (large, mitochondria-rich
+cells versus small immune cells), so only the lower tail is cut per sample, mitochondrial fraction is capped
+at 30%, and doublets are called with scDblFinder per sample.
+
+```{r}
+show_tab("02_qc_flags_by_celltype.tsv")
+show_tab("02_qc_summary.tsv")
+show_fig("02_qc_per_sample.png")
+```
+
+## 3. Integration
+
+LogNormalize, 3,000 HVGs without mitochondrial/ribosomal genes, PCA, Harmony by **patient** (site is the
+biology and is not regressed out). Mixing is measured with a kNN-based LISI: patient LISI should rise,
+cell-type LISI should stay near 1.
+
+```{r}
+show_tab("03_integration_lisi.tsv")
+show_fig("03_integration_umap.png")
+```
+
+## 4. Annotation and compartments
+
+Leiden clusters annotated with SingleR (HPCA) and canonical markers, compared with the author labels.
+A guard stops the pipeline if the cluster-to-compartment map no longer matches.
+
+```{r}
+show_tab("04_cluster_annotation.tsv", n = 30)
+show_fig("04_annotation_umap.png")
+show_fig("04_marker_dotplot.png")
+show_tab("05_compartment_check.tsv")
+show_tab("05_cells_per_patient_compartment.tsv")
+```
+
+## 5. Malignant cells (inferCNV)
+
+inferCNV per patient. The reference combines immune/stromal cells with non-tumour epithelium from the
+*other* patients (leave-one-patient-out), so lineage-specific expression is not read as copy-number change;
+thresholds are calibrated on that epithelial reference, and each patient's own non-tumour epithelium is a
+negative control.
+
+```{r}
+show_tab("06_cnv_calls_by_sample.tsv", n = 30)
+show_fig("06_cnv_scores.png")
+```
+
+## 6. Myeloid states
+
+Myeloid cells re-analysed on their own (HVGs, PCA, Harmony, Leiden). "Immunosuppressive" is an explicit
+gene programme (CD274, IL10, SPP1, TREM2, APOE, CD163, VEGFA, ...), not an assumed identity. Tumour
+enrichment is the median over paired patients of log2(tumour fraction / non-tumour fraction).
+
+```{r}
+show_tab("07_myeloid_states.tsv")
+show_fig("07_myeloid_states.png")
+```
+
+## 7. Progenitor-like tumour cells
+
+Within CNV-confirmed malignant cells, the progenitor-like group is the top quartile per patient of a hepatic
+progenitor/biliary programme (EPCAM, KRT19, KRT7, SOX9, CD24, PROM1). CytoTRACE2, a trained model of
+developmental potential that uses the whole transcriptome, is an independent check: the state is described
+as stem-like only where CytoTRACE2 agrees.
+
+```{r}
+show_tab("08_progenitor_by_patient.tsv")
+show_fig("08_progenitor_like.png")
+```
+
+## 8. Pseudobulk differential expression and pathways
+
+Counts summed per sample and group; DESeq2 with `~ patient + group`, so every contrast is within patients.
+GSEA on Hallmark gene sets ranked by the Wald statistic.
+
+```{r}
+show_tab("09_de_progenitor_vs_other_malignant.tsv", n = 25,
+         cols = c("gene", "baseMean", "log2FoldChange", "padj", "n_patients"))
+show_tab("09_de_myeloid_tumour_vs_normal.tsv", n = 25,
+         cols = c("gene", "baseMean", "log2FoldChange", "padj", "n_patients"))
+show_tab("09_hallmark_gsea.tsv", n = 30, cols = c("pathway", "NES", "padj", "size", "contrast"))
+show_fig("09_hallmark_gsea.png")
+```
+
+## 9. Communication and candidate mediators
+
+LIANA consensus (NATMI, Connectome, log2FC, SingleCellSignalR) on tumour-site cells. Progenitor-like ↔
+TAM interactions are ordered by the mean of two ranks: the LIANA aggregate rank and the specificity
+(how much better the same pair ranks with progenitor-like than with other malignant cells). The order is a
+list of hypotheses for validation, not a statistical test; genes of the defining programme are flagged.
+
+```{r}
+show_tab("10_prioritised_mediators.tsv", n = 25)
+show_fig("10_prioritised_mediators.png")
+```
+
+## 10. Myeloid trajectories
+
+Slingshot on the myeloid Harmony embedding, rooted in classical monocytes, restricted to states that can
+derive from monocytes (Kupffer cells, dendritic cells, the stress-signature state and artefacts excluded).
+Pseudotime orders cells by similarity and does not prove differentiation. Gene–pseudotime correlations are
+recomputed per patient and reported with the number of patients that agree on the sign.
+
+```{r}
+show_tab("11_trajectory_lineages.tsv")
+show_tab("11_trajectory_genes.tsv", n = 30)
+show_fig("11_myeloid_trajectories.png")
+```
+
+## Limitations
+
+- One public cohort (10 patients); paired tumour/non-tumour material for 8 patients, so site comparisons
+  rest on few replicates.
+- No FASTQ: the author matrix and its filtering are taken as given.
+- Communication is inferred from expression of ligands and receptors, without spatial information; the
+  next step is to map this reference onto public Xenium/Visium data and quantify colocalisation.
+- Pseudotime and CytoTRACE2 are computational orderings, not lineage tracing.
+
+## Reproducibility
+
+```{r}
+cat("R:", R.version.string, "\n\n")
+pk <- c("Seurat", "harmony", "scDblFinder", "SingleR", "infercnv", "DESeq2", "fgsea",
+        "liana", "slingshot", "CytoTRACE2", "targets")
+v <- vapply(pk, function(p) tryCatch(as.character(utils::packageVersion(p)), error = function(e) "-"), "")
+cat(knitr::kable(data.frame(package = pk, version = v), format = "pipe", row.names = FALSE), sep = "\n")
+```

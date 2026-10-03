@@ -16,7 +16,8 @@ tar_option_set(
   format   = format_qs2,
   seed     = 1234,
   memory   = "transient",      # drop large objects from RAM once used
-  garbage_collection = TRUE
+  garbage_collection = TRUE,
+  error    = "continue"        # a failing step does not stop independent steps
 )
 
 list(
@@ -179,5 +180,26 @@ list(
              format = "file"),
   tar_target(mediators_png, save_plot(plot_mediators(mediators), "results/figures/10_prioritised_mediators.png",
                                       width = 11, height = 9),
-             format = "file")
+             format = "file"),
+
+  # ---- 11. Myeloid trajectories ----------------------------------------------------------
+  tar_target(trajectory, run_trajectory(seu_myeloid, myeloid_label_check)),
+  tar_target(trajectory_gene_table, trajectory_genes(seu_myeloid, trajectory)),
+  tar_target(trajectory_tsv, write_tsv(trajectory_summary(trajectory), "results/tables/11_trajectory_lineages.tsv"),
+             format = "file"),
+  tar_target(trajectory_genes_tsv, write_tsv(trajectory_gene_table, "results/tables/11_trajectory_genes.tsv"),
+             format = "file"),
+  tar_target(trajectory_png, save_plot(plot_trajectory(trajectory, trajectory_gene_table),
+                                       "results/figures/11_myeloid_trajectories.png", width = 15, height = 12),
+             format = "file"),
+
+  # ---- 12. HTML report (docs/index.html, GitHub Pages) -----------------------------------
+  tar_target(report_rmd, "report/index.Rmd", format = "file"),
+  tar_target(report_html, render_report(report_rmd, c(
+    ingest_tsv, design_tsv, qc_tsv, qc_celltype_tsv, qc_png, lisi_tsv, integration_png,
+    annotation_tsv, annotation_png, dotplot_png, compartment_tsv, compartment_patient_tsv,
+    cnv_tsv, cnv_png, myeloid_summary_tsv, myeloid_png, progenitor_tsv, progenitor_png,
+    de_prog_tsv, de_myeloid_tsv, gsea_tsv, gsea_png, mediators_tsv, mediators_png,
+    trajectory_tsv, trajectory_genes_tsv, trajectory_png)),
+    format = "file")
 )
