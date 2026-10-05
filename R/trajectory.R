@@ -7,15 +7,18 @@
 #     monocyte -> Kupffer curve would be an artefact of transcriptional similarity;
 #   - dendritic cells (cDC1, cDC2, MHCII-high mac/DC) belong to a separate lineage;
 #   - the stress-high monocyte state (dissociation signature) and artefact clusters are
-#     excluded.
+#     excluded;
+#   - cycling macrophages are excluded: proliferation is a cell-cycle state shared by
+#     several macrophage types, not a differentiation step. In the first run they were
+#     placed in the middle of the single lineage (between SPP1+ and C1Q+APOE+ TAMs)
+#     although they form a separate island in the UMAP.
 # Pseudotime orders cells by transcriptional similarity; it is not a time course and
 # does not prove differentiation. Genes are ranked by their Spearman correlation with
 # pseudotime, and each correlation is recomputed within each patient: a gene is only
 # reported as consistent when most patients agree on the sign, so the ranking is not
 # driven by one patient (cells are not independent observations).
 
-trajectory_states <- c("Classical monocyte", "SPP1+ TAM", "C1Q+APOE+ TAM", "APOE+LGMN+ TAM",
-                       "Cycling macrophage")
+trajectory_states <- c("Classical monocyte", "SPP1+ TAM", "C1Q+APOE+ TAM", "APOE+LGMN+ TAM")
 
 #' Slingshot lineages on the myeloid object. Returns the cell table (state, site,
 #' patient, pseudotime per lineage, UMAP), the lineage paths and curves embedded in
