@@ -1,6 +1,6 @@
 # hcc-singlecell
 
-Single-cell analysis of human hepatocellular carcinoma (HCC): cellular heterogeneity across patients and tissue sites, and communication between tumour cells with stem-like features and immunosuppressive myeloid populations.
+Single-cell analysis of human hepatocellular carcinoma (HCC): cellular heterogeneity across patients and tissue sites, and communication between tumour cells with progenitor/stem-like features and immunosuppressive myeloid populations.
 
 > **Status: work in progress.** The repository is developed in the open; see [Status](#status) for what is done.
 
@@ -19,7 +19,7 @@ Single-cell analysis of human hepatocellular carcinoma (HCC): cellular heterogen
 | [GSE149614](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE149614) (Lu et al., 2022) | scRNA-seq (10x) | ~70k cells, 10 patients; primary tumour, portal vein tumour thrombus, metastatic lymph node, non-tumour liver |
 | Public 10x liver cancer dataset (TBD) | Xenium / Visium | Spatial validation (stretch goal) |
 
-The analysis starts from the author-provided **raw count matrix** and cell metadata (no FASTQ re-processing). Consequently, spliced/unspliced counts are not available and RNA velocity is out of scope; trajectories rely on `slingshot` / `monocle3`.
+The analysis starts from the author-provided **raw count matrix** and cell metadata (no FASTQ re-processing). Consequently, spliced/unspliced counts are not available and RNA velocity is out of scope; trajectories rely on `slingshot`.
 
 Raw data are not tracked. `slurm/02_download.sh` retrieves them from GEO and records MD5 checksums.
 
@@ -35,10 +35,11 @@ Raw data are not tracked. `slurm/02_download.sh` retrieves them from GEO and rec
 | Progenitor-like (stem-like candidate) cells | Malignant cells only: top quartile, within each patient, of a hepatic progenitor / biliary programme score (EPCAM, KRT19, KRT7, SOX9, CD24, PROM1); `CytoTRACE2` potency as an independent, whole-transcriptome check |
 | Myeloid compartment | Re-analysis of myeloid cells alone (HVGs, PCA, Harmony, Leiden); immunosuppression programme score; tumour vs non-tumour enrichment of each state in paired patients |
 | Differential expression | Pseudobulk `DESeq2` on raw counts, `~ patient + group`: progenitor-like vs other malignant cells; myeloid tumour vs non-tumour |
-| Pathway enrichment | `fgsea` (Hallmark, Reactome) |
-| Trajectories | `slingshot` / `monocle3` on myeloid cells |
+| Pathway enrichment | `fgsea` on Hallmark gene sets, genes ranked by the DESeq2 Wald statistic |
+| Trajectories | `slingshot` on the myeloid Harmony embedding, rooted in classical monocytes; monocyte-derived states only; gene–pseudotime correlations checked per patient |
 | Cell–cell communication | `LIANA` consensus (NATMI, Connectome, log2FC, SingleCellSignalR) on tumour-site cells |
 | Candidate prioritisation | Progenitor-like ↔ TAM interactions ranked by the mean of two ranks, LIANA aggregate rank and specificity vs other malignant cells; DE of the tumour-side gene reported, genes of the defining programme flagged — an ordering of hypotheses for validation, not a test |
+| Report | HTML report rendered as the last pipeline step (`docs/index.html`, GitHub Pages) |
 | Spatial (stretch) | Reference mapping, niche detection, colocalisation statistics |
 
 ### Design decisions
@@ -48,7 +49,7 @@ Raw data are not tracked. `slurm/02_download.sh` retrieves them from GEO and rec
 - **Log-normalisation rather than SCTransform.** Differential expression is done on raw counts at the pseudobulk level, so SCTransform would only affect the embedding, at a memory cost that matters on a cluster limited to 2 GB per CPU.
 - **Integrate across patients, not tissue sites.** Tissue site is the biological signal of interest; correcting it would remove it.
 - **Differential expression at the pseudobulk level** with the patient as blocking factor, so that tumour vs non-tumour comparisons are made within patients and cells are not treated as independent replicates.
-- **Stem-like states are treated cautiously.** Cancer stem cells in HCC are a debated concept and marker scores are weak evidence on their own. A first definition (top quartile of a CSC marker score AND of a within-sample gene-count rank) was dropped after the second run: the two readouts were uncorrelated in every patient (Spearman −0.17 to 0.28), so their intersection (~6% of cells) was what chance alone gives, and differential expression only returned the defining markers. The state is now defined by one programme (hepatic progenitor / biliary genes) and named for it, "progenitor-like"; CytoTRACE2, which does not use the marker list, tests whether it also has higher developmental potential.
+- **Stem-like states are treated cautiously.** Cancer stem cells in HCC are a debated concept and marker scores are weak evidence on their own. A first definition (top quartile of a CSC marker score AND of a within-sample gene-count rank) was dropped after the second run: the two readouts were uncorrelated in every patient (Spearman −0.17 to 0.28), so their intersection (~6% of cells) was what chance alone gives, and differential expression only returned the defining markers. The state is now defined by one programme (hepatic progenitor / biliary genes) and named for it, "progenitor-like"; CytoTRACE2, which does not use the marker list, tests whether it also has higher developmental potential. The rule was fixed before the result: the state is called stem-like only where CytoTRACE2 agrees. It did not (Results §7), so the state is reported as progenitor/biliary-like.
 - **No circular evidence in the candidate ranking.** Differential expression of a gene that defines the group cannot support that gene as a mediator, so DE is reported but not scored, and defining genes are flagged.
 - **Myeloid-derived suppressor cells** are hard to separate from monocytes/neutrophils in scRNA-seq alone; states are named by function-associated programmes rather than by assumed identity.
 
@@ -114,7 +115,9 @@ inferCNV was run per patient (9 patients with ≥ 50 epithelial cells). In five 
 
 The first pass also exposed a design flaw: with immune/stromal cells as the only reference, non-tumour epithelium was called malignant in 31–58% of cells in four patients (HCC03, HCC05, HCC06, HCC10). Hepatocyte-specific genes cluster along some chromosomes, so lineage differences read as copy-number change. The reference now also includes non-tumour epithelium pooled from the other patients (leave-one-patient-out), and thresholds are calibrated on that lineage-matched reference; each patient's own non-tumour epithelium stays out and remains the negative check.
 
-The second run fixed the false positives (non-tumour epithelium 0–0.5% malignant in HCC03, 04, 05, 06 and 09) but exposed a second problem: requiring both the CNV score and the correlation to exceed the 99th percentile of the epithelial reference left most tumour epithelium "unresolved" in some patients (HCC03 1.4% malignant, HCC05 2.6%). The epithelial reference comes from nine other livers, so its CNV score is widely spread and overlaps the tumour; the correlation with the patient's own tumour profile separates the two in every patient. Cells are now called on that correlation alone (malignant above the 99th percentile of the epithelial reference, non-malignant below the 95th). *(Re-run pending.)*
+The second run fixed the false positives (non-tumour epithelium 0–0.5% malignant in HCC03, 04, 05, 06 and 09) but exposed a second problem: requiring both the CNV score and the correlation to exceed the 99th percentile of the epithelial reference left most tumour epithelium "unresolved" in some patients (HCC03 1.4% malignant, HCC05 2.6%). The epithelial reference comes from nine other livers, so its CNV score is widely spread and overlaps the tumour; the correlation with the patient's own tumour profile separates the two in every patient. Cells are now called on that correlation alone (malignant above the 99th percentile of the epithelial reference, non-malignant below the 95th).
+
+Final calls ([`06_cnv_calls_by_sample.tsv`](results/tables/06_cnv_calls_by_sample.tsv)): **98.4–100% of tumour, PVTT and lymph-node epithelium is malignant in every patient**, and non-tumour epithelium is called malignant in 0–5% of cells where it is well represented (HCC03 0.1%, HCC04 0%, HCC05 0%, HCC09 2.9%, HCC06 4.9%). Three non-tumour samples have few epithelial cells and higher rates: HCC07 (4 of 34), HCC08 (3 of 19) and **HCC10 (35 of 70, 50%)**. HCC10 is the only clear exception; tumour cells in the adjacent sample (the patient also has a lymph-node metastasis) are a plausible explanation that the data cannot confirm. 18,475 malignant cells go forward.
 
 ### 6. Myeloid states
 
@@ -135,14 +138,57 @@ Re-analysis of 14,959 myeloid cells gives 12 states. Tumour enrichment is the me
 | 8 | cDC1 (CLEC9A, IDO1) | 479 | 33% | −2.9 | −0.18 |
 | 7 | MHC-II-high macrophages / DC | 926 | 52% | −1.9 | −0.03 |
 
-The three tumour-associated macrophage states (0, 2, 3; ~6,800 cells) are almost confined to tumour sites, enriched 3- to 24-fold over paired non-tumour liver, and carry the highest immunosuppression score; non-tumour liver is dominated by Kupffer cells and monocytes. SPP1⁺ TAMs (state 3) are the prime candidate partner for progenitor-like tumour cells in the communication analysis. Caveats: state 5 carries a dissociation-stress signature, and states 10 (Kupffer cells with hepatocyte transcripts, 264 cells) and 11 (myeloid–T doublets, 81 cells) are treated as artefacts.
+The three tumour-associated macrophage states (0, 2, 3; ~6,800 cells) are almost confined to tumour sites (96–98% of their cells), enriched over paired non-tumour liver in the median patient, and carry the highest immunosuppression score; non-tumour liver is dominated by Kupffer cells and monocytes. SPP1⁺ TAMs (state 3) are the prime candidate partner for progenitor-like tumour cells in the communication analysis. Caveats: state 5 carries a dissociation-stress signature, and states 10 (Kupffer cells with hepatocyte transcripts, 264 cells) and 11 (myeloid–T doublets, 81 cells) are treated as artefacts.
+
+Pseudobulk DE of all myeloid cells, tumour vs non-tumour within patients, agrees: tumour myeloid cells up-regulate a lipid-handling programme (APOE, LPL, FABP5; Hallmark cholesterol homeostasis, adipogenesis, fatty-acid metabolism), proliferation (E2F, G2M) and SPP1/MMP14 (EMT, angiogenesis), and down-regulate interferon-γ/α responses. NK/T cytotoxic genes (GZMB, PRF1, IL2RB) also come out lower in tumour myeloid cells, which points to some NK/T contamination of non-tumour myeloid profiles rather than myeloid biology ([`09_de_myeloid_tumour_vs_normal.tsv`](results/tables/09_de_myeloid_tumour_vs_normal.tsv), [`09_hallmark_gsea.tsv`](results/tables/09_hallmark_gsea.tsv)).
+
+### 7. Progenitor-like tumour cells: no stem-like signal
+
+Within the 18,475 malignant cells, the top quartile per patient of the progenitor/biliary programme (EPCAM, KRT19, KRT7, SOX9, CD24, PROM1) defines the progenitor-like group. CytoTRACE2, run independently on the whole transcriptome, does **not** give these cells higher developmental potential ([`08_progenitor_by_patient.tsv`](results/tables/08_progenitor_by_patient.tsv)):
+
+| Patient | Malignant cells | Spearman programme vs CytoTRACE2 | Median CytoTRACE2, progenitor-like vs other |
+|---|---:|---:|---|
+| HCC02 | 2,073 | −0.02 | 0.077 vs 0.076 |
+| HCC03 | 3,394 | −0.02 | 0.022 vs 0.020 |
+| HCC04 | 2,442 | −0.08 | 0.067 vs 0.068 |
+| HCC05 | 1,186 | 0.05 | 0.045 vs 0.044 |
+| HCC06 | 237 | 0.33 | 0.080 vs 0.069 |
+| HCC07 | 193 | 0.12 | 0.117 vs 0.113 |
+| HCC08 | 4,928 | 0.10 | 0.257 vs 0.243 |
+| HCC09 | 1,459 | 0.21 | 0.246 vs 0.233 |
+| HCC10 | 2,563 | **−0.24** | **0.132 vs 0.249** |
+
+Correlations are near zero in most patients, the differences in median potency are ≤ 0.014 where positive, and in HCC10 the relation is reversed. By the rule set in advance, the state is therefore not described as stem-like. What it is, is shown by the DE below: a progenitor/biliary-like malignant state, the transcriptional phenotype associated with CK19⁺ HCC.
+
+![Progenitor-like](results/figures/08_progenitor_like.png)
+
+### 8. Differential expression and pathways
+
+Pseudobulk DESeq2, progenitor-like vs other malignant cells within each of 9 patients ([`09_de_progenitor_vs_other_malignant.tsv`](results/tables/09_de_progenitor_vs_other_malignant.tsv)): 19 genes at padj < 0.05. Up: SOX9, KRT7, CD24, KRT19 (defining genes, so circular) and, outside the definition, CXCL6, CCL28, SPINT1, SOX4, GP2. Down: proliferation genes (CDK1, RRM2, RAD51AP1, SPC25).
+
+Hallmark GSEA gives a consistent picture: down E2F targets, G2M checkpoint, MYC targets and oxidative phosphorylation, and the hepatocyte metabolic programmes (bile acid, fatty acid, xenobiotic metabolism); up TNFα/NF-κB, epithelial–mesenchymal transition, hypoxia, inflammatory response, TGF-β and IL-6/JAK/STAT3 signalling. The progenitor-like cells are **less proliferative** than other malignant cells, have lost hepatocyte identity and carry an inflammatory, EMT-like programme.
+
+![GSEA](results/figures/09_hallmark_gsea.png)
+
+### 9. Communication and candidate mediators
+
+LIANA consensus on tumour-site cells, then progenitor-like ↔ TAM interactions ranked by LIANA rank and specificity vs other malignant cells ([`10_prioritised_mediators.tsv`](results/tables/10_prioritised_mediators.tsv)).
+
+![Mediators](results/figures/10_prioritised_mediators.png)
+
+- **CD24 → SIGLEC10** (progenitor-like → C1Q⁺APOE⁺ TAM) ranks first, with by far the highest specificity (LIANA rank 0.0025 with progenitor-like cells vs 0.14 with other malignant cells). CD24–Siglec-10 is a described "don't eat me" checkpoint that inhibits macrophage phagocytosis (Barkal et al., *Nature* 2019), and SIGLEC10 is part of the immunosuppression programme used here. **Caveat:** CD24 is one of the six genes that define the group, so its specificity is inflated by construction; the interaction is a hypothesis to test with a definition that excludes CD24.
+- The remaining candidates (SPON2–ITGB2, SERPINE1–PLAUR, CD59–STAB1, SPP1–CD44, TNFSF12–TNFRSF12A, CXCL12–ITGB1, APOE–SCARB1) have low specificity, and the tumour-side gene is not differentially expressed. They are ordered hypotheses, not findings.
+
+### 10. Myeloid trajectories
+
+*(Running.)* Slingshot from classical monocytes to the TAM states; Kupffer cells (embryonic resident macrophages) and dendritic cells are excluded.
 
 ## Computing environment
 
 The pipeline runs on a shared SLURM cluster (CentOS 7, glibc 2.17, no root access, per-user storage quota).
 
-- **Environment:** conda-forge/bioconda via a user-level `micromamba` binary, defined in [`environment.yml`](environment.yml) (R 4.5, Seurat 5). Packages only available on GitHub (LIANA, CellChat, presto, CytoTRACE2) are installed by `slurm/03_install_env.sh` and `slurm/06_install_cytotrace2.sh`, which also exports the exact versions (`environment.lock.yml`) and commit SHAs (`github_packages.tsv`).
-- **Pipeline:** [`targets`](https://docs.ropensci.org/targets/) with local `crew` workers inside a single SLURM job; only outdated targets are re-run after a restart.
+- **Environment:** conda-forge/bioconda via a user-level `micromamba` binary, defined in [`environment.yml`](environment.yml) (R 4.5, Seurat 5). Packages only available on GitHub (LIANA, CellChat, presto, CytoTRACE2) are installed by `slurm/03_install_env.sh` and `slurm/06_install_cytotrace2.sh` (CytoTRACE2 depends on HiClimR, which imports ncdf4; ncdf4 cannot be built against the system netCDF of CentOS 7, so HiClimR is installed without it — it only uses ncdf4 to read climate files), which also exports the exact versions (`environment.lock.yml`) and commit SHAs (`github_packages.tsv`).
+- **Pipeline:** [`targets`](https://docs.ropensci.org/targets/) inside a single SLURM job launched by `slurm/run_all.sh`, which checks and installs missing packages, validates the pipeline and runs it. Only outdated targets are re-run, and a failing target does not stop independent ones (`error = "continue"`).
 - **Storage budget:** ≤ 60 GB for the whole project (data, environment and target store); intermediate objects stored with `qs2`.
 
 ### Setup
@@ -155,7 +201,7 @@ sbatch slurm/02_download.sh       # GEO download + checksums
 sbatch slurm/03_install_env.sh    # create env/, install GitHub packages, export lock files
 sbatch slurm/05_download_refs.sh  # hg38 gene positions for inferCNV
 sbatch slurm/06_install_cytotrace2.sh  # CytoTRACE2 (potency check for progenitor-like cells)
-sbatch slurm/10_run_pipeline.sh   # run or resume the targets pipeline
+sbatch slurm/run_all.sh           # check packages, run or resume the whole pipeline, render the report
 ```
 
 Each script writes a plain-text report (`*_report.txt`) so that runs can be inspected without an interactive session.
@@ -172,8 +218,10 @@ hcc-singlecell/
 ├── results/
 │   ├── figures/
 │   └── tables/
-└── report/
-    └── report.qmd        # Quarto HTML report
+├── report/
+│   └── index.Rmd         # HTML report, rendered by the pipeline
+└── docs/
+    └── index.html        # rendered report (GitHub Pages)
 ```
 
 ## Reproducibility
@@ -190,18 +238,20 @@ hcc-singlecell/
 - [x] Environment installation and lock files
 - [x] QC (67,908 cells kept)
 - [x] Integration and first-pass annotation
-- [ ] Malignant-cell identification (inferCNV) *(lineage-matched reference done; calling rule revised, re-run pending)*
+- [x] Malignant-cell identification (inferCNV, lineage-matched reference)
 - [x] Myeloid states
-- [ ] Progenitor-like (stem-like candidate) tumour states *(definition revised, re-run pending)*
-- [ ] Differential expression and pathways *(myeloid done; progenitor-like re-run pending)*
-- [ ] Trajectories
-- [ ] Cell–cell communication and candidate ranking *(ranking revised, re-run pending)*
+- [x] Progenitor-like tumour states (CytoTRACE2 does not support a stem-like reading)
+- [x] Differential expression and pathways
+- [x] Cell–cell communication and candidate ranking
+- [ ] Trajectories *(running)*
+- [ ] Report published on GitHub Pages *(rendered by the current run)*
+- [ ] Sensitivity check: progenitor-like definition without CD24
 - [ ] Spatial mapping (stretch)
-- [ ] Report published on GitHub Pages
 
-## Reference
+## References
 
-Lu Y, Yang A, Quan C, et al. A single-cell atlas of the multicellular ecosystem of primary and metastatic hepatocellular carcinoma. *Nature Communications* 13, 4594 (2022).
+- Lu Y, Yang A, Quan C, et al. A single-cell atlas of the multicellular ecosystem of primary and metastatic hepatocellular carcinoma. *Nature Communications* 13, 4594 (2022).
+- Barkal AA, Brewer RE, Markovic M, et al. CD24 signalling through macrophage Siglec-10 is a target for cancer immunotherapy. *Nature* 572, 392–396 (2019).
 
 ## Author
 

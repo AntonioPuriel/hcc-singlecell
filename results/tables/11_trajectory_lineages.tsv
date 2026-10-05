@@ -1,0 +1,2 @@
+lineage	path	n_cells	pct_tumour_sites_first_decile	pct_tumour_sites_last_decile	n_patients_tested	median_rho_suppression	n_patients_rho_positive
+lineage1	Classical monocyte -> SPP1+ TAM -> C1Q+APOE+ TAM -> APOE+LGMN+ TAM	8009	18.6	95.4	10	0.34	9

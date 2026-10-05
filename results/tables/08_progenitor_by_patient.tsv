@@ -1,0 +1,10 @@
+patient	sites	n_malignant	n_progenitor_like	spearman_prog_vs_cytotrace2	median_cytotrace2_progenitor	median_cytotrace2_other	wilcox_p	spearman_prog_vs_gene_count
+HCC02	Tumor	2073	519	-0.02	0.077	0.076	0.77	-0.12
+HCC03	Normal,Tumor	3394	849	-0.02	0.022	0.02	0.079	-0.08
+HCC04	Tumor	2442	611	-0.08	0.067	0.068	0.59	-0.16
+HCC05	Tumor	1186	297	0.05	0.045	0.044	0.051	-0.13
+HCC06	Normal,Tumor	237	60	0.33	0.08	0.069	3.6e-05	-0.06
+HCC07	Normal,PVTT,Tumor	193	49	0.12	0.117	0.113	0.00069	-0.04
+HCC08	Normal,PVTT,Tumor	4928	1232	0.1	0.257	0.243	0.0062	0.18
+HCC09	Normal,Tumor	1459	365	0.21	0.246	0.233	0.066	-0.13
+HCC10	Lymph,Normal,Tumor	2563	641	-0.24	0.132	0.249	2.3e-30	-0.13
