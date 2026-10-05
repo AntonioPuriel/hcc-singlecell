@@ -181,7 +181,15 @@ LIANA consensus on tumour-site cells, then progenitor-like ↔ TAM interactions 
 
 ### 10. Myeloid trajectories
 
-*(Running.)* Slingshot from classical monocytes to the TAM states; Kupffer cells (embryonic resident macrophages) and dendritic cells are excluded.
+Slingshot on the myeloid Harmony embedding, rooted in classical monocytes, with only monocyte-derived candidate states: Kupffer cells (embryonic resident macrophages), dendritic cells, the stress-signature state and artefacts are excluded. Cycling macrophages were excluded after the first run, where slingshot placed them in the middle of the lineage although they form a separate island in the UMAP: proliferation is a cell-cycle state, not a differentiation step ([`11_trajectory_lineages.tsv`](results/tables/11_trajectory_lineages.tsv), [`11_trajectory_genes.tsv`](results/tables/11_trajectory_genes.tsv)).
+
+![Trajectories](results/figures/11_myeloid_trajectories.png)
+
+- One lineage (8,009 cells): **classical monocyte → SPP1⁺ TAM → C1Q⁺APOE⁺ TAM → APOE⁺LGMN⁺ TAM**. Tumour-site cells go from 19% in the first pseudotime decile to 95% in the last.
+- Monocyte genes fall along pseudotime (S100A8/9, S100A4/6, FCN1, VCAN, CD52) and complement, lipid and antigen-presentation genes rise (C1QA/B/C, APOE, SEPP1, SLC40A1, FOLR2, LGMN, CD74); every gene shown has the same sign in all 10 patients.
+- The immunosuppression programme rises from monocytes to SPP1⁺ TAMs and then plateaus (per-patient Spearman with pseudotime: median 0.34, positive in 9 of 10 patients).
+
+Interpretation: SPP1⁺ TAMs sit between monocytes and the C1Q⁺APOE⁺ states, consistent with their description as monocyte-derived. The end of the lineage expresses FOLR2, SEPP1 and SLC40A1, genes associated with tissue-resident-like macrophages, so their position at the end of a monocyte-rooted pseudotime does not show that they derive from monocytes; pseudotime orders cells by similarity and lineage tracing would be needed.
 
 ## Computing environment
 
@@ -243,8 +251,9 @@ hcc-singlecell/
 - [x] Progenitor-like tumour states (CytoTRACE2 does not support a stem-like reading)
 - [x] Differential expression and pathways
 - [x] Cell–cell communication and candidate ranking
-- [ ] Trajectories *(running)*
-- [ ] Report published on GitHub Pages *(rendered by the current run)*
+- [x] Myeloid trajectories
+- [x] HTML report rendered by the pipeline (`docs/index.html`)
+- [ ] Report published on GitHub Pages
 - [ ] Sensitivity check: progenitor-like definition without CD24
 - [ ] Spatial mapping (stretch)
 
