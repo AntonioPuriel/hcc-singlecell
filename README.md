@@ -2,6 +2,8 @@
 
 Single-cell analysis of human hepatocellular carcinoma (HCC): cellular heterogeneity across patients and tissue sites, and communication between tumour cells with progenitor/stem-like features and immunosuppressive myeloid populations.
 
+**Report:** [antoniopuriel.github.io/hcc-singlecell](https://antoniopuriel.github.io/hcc-singlecell/) — all results, tables and figures, rendered by the pipeline.
+
 > **Status: work in progress.** The repository is developed in the open; see [Status](#status) for what is done.
 
 ## Objectives
@@ -253,7 +255,7 @@ hcc-singlecell/
 - [x] Cell–cell communication and candidate ranking
 - [x] Myeloid trajectories
 - [x] HTML report rendered by the pipeline (`docs/index.html`)
-- [ ] Report published on GitHub Pages
+- [x] Report published on [GitHub Pages](https://antoniopuriel.github.io/hcc-singlecell/)
 - [ ] Sensitivity check: progenitor-like definition without CD24
 - [ ] Spatial mapping (stretch)
 
